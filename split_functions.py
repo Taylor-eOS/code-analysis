@@ -1,5 +1,5 @@
 import os
-from utils import find_function_boundaries
+from utils import find_function_boundaries, extract_function_name
 
 SOURCE_FILE = input("Input file: ")
 OUTPUT_DIR = os.path.splitext(SOURCE_FILE)[0].lower() + "_functions"
@@ -27,10 +27,9 @@ def write_functions():
     starts = STATE["starts"]
     ends = STATE["ends"]
     for start, end in zip(starts, ends):
-        line = lines[start]
-        idx = line.find("FUN_")
-        name_end = line.find("(", idx)
-        name = line[idx:name_end].strip()
+        name, _ = extract_function_name(lines, start)
+        if name is None:
+            continue
         suffix = name[4:7] if len(name) >= 6 else name[4:]
         sub_dir = os.path.join(OUTPUT_DIR, suffix)
         if sub_dir not in STATE["reported_dirs"]:
