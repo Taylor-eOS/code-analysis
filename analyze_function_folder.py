@@ -1,63 +1,90 @@
 from pathlib import Path
 
-def get_files(root_path):
+SHORT_FILE_LENGTH = 8
+
+state = {
+    "root_path": "rome_functions",
+    "files": [],
+    "results": None
+}
+
+def get_files():
     print("Getting files")
-    root_folder = Path(root_path)
-    files = []
+    root_folder = Path(state["root_path"])
     for subfolder in sorted(p for p in root_folder.iterdir() if p.is_dir()):
         for p in subfolder.rglob("*"):
             if p.is_file():
-                files.append((subfolder.name, p))
-    return files
+                state["files"].append((subfolder.name, p))
 
-def get_subfolder_file_counts(files):
+def get_subfolder_file_counts():
     counts = {}
-    for name, _ in files:
+    for name, _ in state["files"]:
         counts[name] = counts.get(name, 0) + 1
-    return sorted(counts.items(), key=lambda x: x[1], reverse=True)
+    state["results"] = sorted(counts.items(), key=lambda x: x[1], reverse=True)
 
-def get_largest_files(files, top_n=10):
-    sized = [(name, p, p.stat().st_size) for name, p in files]
+def get_largest_files():
+    sized = [(name, p, p.stat().st_size) for name, p in state["files"]]
     sized.sort(key=lambda x: x[2], reverse=True)
-    return sized[:top_n]
+    state["results"] = sized[:10]
 
-def get_short_file_count(files):
-    count = 0
-    for _, p in files:
+def get_short_file():
+    short_files = []
+    for name, p in state["files"]:
         try:
             with open(p, "r", encoding="utf-8") as f:
-                if sum(1 for _ in f) < 10:
+                if sum(1 for _ in f) < SHORT_FILE_LENGTH:
+                    short_files.append(f"{name}/{p.name}")
+        except Exception:
+            pass
+    state["results"] = short_files
+
+def get_short_file_count():
+    count = 0
+    for _, p in state["files"]:
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                if sum(1 for _ in f) < SHORT_FILE_LENGTH:
                     count += 1
         except Exception:
             pass
-    return count
+    state["results"] = count
 
-def print_subfolder_file_counts(results):
-    for name, count in results:
+def print_subfolder_file_counts():
+    for name, count in state["results"]:
         print(f"{name}: {count}")
 
-def print_largest_files(results):
-    for name, p, size in results:
+def print_largest_files():
+    for name, p, size in state["results"]:
         print(f"{name}/{p.name}: {size} bytes")
 
-def print_short_file_count(count):
-    print(f"Files under 10 lines: {count}")
+def print_short_file_count():
+    try:
+        with open("short_functions.txt", "w", encoding="utf-8") as f:
+            for item in state["results"]:
+                f.write(f"{item}\n")
+        print("Saved short functions to short_functions.txt")
+    except Exception:
+        pass
 
 def main():
-    files = get_files("rome_functions")
+    get_files()
     print("1. Subfolder file counts")
     print("2. Show largest 10 files")
-    print("3. Count files under 10 lines")
+    print(f"3. Count files under {SHORT_FILE_LENGTH} lines")
+    print(f"4. Save files under {SHORT_FILE_LENGTH} lines")
     choice = input("Select an analysis option: ")
     if choice == "1":
-        results = get_subfolder_file_counts(files)
-        print_subfolder_file_counts(results)
+        get_subfolder_file_counts()
+        print_subfolder_file_counts()
     elif choice == "2":
-        results = get_largest_files(files)
-        print_largest_files(results)
+        get_largest_files()
+        print_largest_files()
     elif choice == "3":
-        count = get_short_file_count(files)
-        print_short_file_count(count)
+        get_short_file_count()
+        print(f"Files under {SHORT_FILE_LENGTH} lines: {state['results']}")
+    elif choice == "4":
+        get_short_file()
+        print_short_file_count()
     else:
         print("Invalid option")
 
