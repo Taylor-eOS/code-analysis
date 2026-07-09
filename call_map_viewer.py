@@ -1,5 +1,7 @@
+import subprocess
 import tkinter as tk
 import explore_functions
+from gguf_llm_library import ask_llm
 
 CANVAS_WIDTH = 1000
 CANVAS_HEIGHT = 700
@@ -53,15 +55,62 @@ def render_center(name):
     else:
         VIEW["status_var"].set(f"{name}  |  not found in index")
 
+def copy_name_to_clipboard(name):
+    VIEW["root"].clipboard_clear()
+    VIEW["root"].clipboard_append(name)
+    entry = explore_functions.STATE["function_map"].get(name)
+    if entry is not None:
+        VIEW["status_var"].set(f"Copied '{name}' to clipboard  |  {entry['path']}")
+    else:
+        VIEW["status_var"].set(f"Copied '{name}' to clipboard  |  not found in index")
+
+def open_current_file():
+    name = VIEW["current_name"]
+    if name is None:
+        return
+    entry = explore_functions.STATE["function_map"].get(name)
+    if entry is None:
+        VIEW["status_var"].set(f"{name}  |  not found in index")
+        return
+    subprocess.Popen(["xdg-open", entry["path"]])
+
+def summarize_current_file():
+    name = VIEW["current_name"]
+    if name is None:
+        return
+    entry = explore_functions.STATE["function_map"].get(name)
+    if entry is None:
+        VIEW["status_var"].set(f"{name}  |  not found in index")
+        return
+    try:
+        with open(entry["path"], "r") as f:
+            code = f.read()
+    except OSError as exc:
+        VIEW["status_var"].set(f"Could not read {entry['path']}: {exc}")
+        return
+    VIEW["status_var"].set(f"Asking LLM to summarize {entry['path']}...")
+    VIEW["root"].update_idletasks()
+    prompt = f"{code}\n\nSummarize what broad category of tasks this function appears to have. All functions are in a strategy game source code; try to distinguish what this one is doing. Don't prepend your answer with surrounding qualifiers, just describe the function task outright. Write your response as one single unformatted sentence."
+    try:
+        summary = ask_llm(prompt, 3)
+    except Exception as exc:
+        VIEW["status_var"].set(f"LLM error: {exc}")
+        return
+    print(summary)
+    VIEW["status_var"].set(f"{summary}")
+
 def on_canvas_click(event):
     canvas = VIEW["canvas"]
-    items = canvas.find_overlapping(event.x - DOT_RADIUS, event.y - DOT_RADIUS,
-                                     event.x + DOT_RADIUS, event.y + DOT_RADIUS)
+    items = canvas.find_overlapping(event.x - DOT_RADIUS, event.y - DOT_RADIUS, event.x + DOT_RADIUS, event.y + DOT_RADIUS)
     for item in items:
         tags = canvas.gettags(item)
         for tag in tags:
             if tag in VIEW["dot_names"]:
-                render_center(VIEW["dot_names"][tag])
+                clicked_name = VIEW["dot_names"][tag]
+                if tag == "center":
+                    copy_name_to_clipboard(clicked_name)
+                else:
+                    render_center(clicked_name)
                 return
 
 def update_suggestions():
@@ -79,7 +128,7 @@ def update_suggestions():
                 listbox.insert(tk.END, name)
                 shown += 1
     if total_matches > shown:
-        listbox.insert(tk.END, f"... {total_matches - shown} more, refine search")
+        listbox.insert(tk.END, f"{total_matches - shown} more...")
 
 def on_entry_key_release(event=None):
     if event is not None and event.keysym == "Return":
@@ -122,6 +171,8 @@ def build_ui():
     name_entry.bind("<KeyRelease>", on_entry_key_release)
     VIEW["name_entry"] = name_entry
     tk.Button(top_frame, text="Show", command=on_entry_submit).pack(side=tk.LEFT, padx=4)
+    tk.Button(top_frame, text="Open file", command=open_current_file).pack(side=tk.LEFT, padx=4)
+    tk.Button(top_frame, text="Summarize file", command=summarize_current_file).pack(side=tk.LEFT, padx=4)
     body_frame = tk.Frame(root)
     body_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
     suggest_list = tk.Listbox(body_frame, width=40)

@@ -230,6 +230,7 @@ def build_caller_map():
             STATE["caller_map"].setdefault(callee, set()).add(name)
 
 def index_all_functions():
+    print("Indexing functions")
     list_folders()
     for folder in STATE["folders"]:
         for filename in list_files(folder):
