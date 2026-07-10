@@ -58,62 +58,61 @@ def matching_paren_close(clean, open_paren_pos):
         i += 1
     return None
 
-def find_top_level_open_braces(clean):
+def match_definition_before_brace(clean, brace_pos):
+    k = brace_pos - 1
+    while k >= 0 and clean[k].isspace():
+        k -= 1
+    if k < 0 or clean[k] != ")":
+        return None
+    close_paren = k
+    line_start = clean.rfind("\n", 0, close_paren) + 1
+    if line_start >= close_paren or clean[line_start].isspace():
+        return None
+    paren_pos = matching_paren_open(clean, close_paren, line_start)
+    if paren_pos is None:
+        return None
+    name_match = None
+    for match in IDENT_RE.finditer(clean, line_start, paren_pos):
+        name_match = match
+    if name_match is None or name_match.end() != paren_pos:
+        return None
+    return (name_match.group(0), line_start)
+
+def matching_paren_open(clean, close_paren_pos, lower_bound):
+    depth = 0
+    i = close_paren_pos
+    while i >= lower_bound:
+        if clean[i] == ")":
+            depth += 1
+        elif clean[i] == "(":
+            depth -= 1
+            if depth == 0:
+                return i
+        i -= 1
+    return None
+
+def find_functions(text):
+    clean = strip_comments_and_strings(text)
     n = len(clean)
     depth = 0
-    opens = []
+    stack = []
+    functions = []
     for i in range(n):
         c = clean[i]
         if c == "{":
             if depth == 0:
-                opens.append(i)
+                entry = match_definition_before_brace(clean, i)
+                stack.append(entry)
+            else:
+                stack.append(None)
             depth += 1
         elif c == "}":
             depth -= 1
-    return opens
-
-def find_definitions_at_column_zero(clean):
-    definitions = []
-    n = len(clean)
-    for m in re.finditer(r"(?m)^\S", clean):
-        line_start = m.start()
-        limit = clean.find("{", line_start)
-        if limit == -1:
-            limit = n
-        search_end = min(limit + 1, n)
-        j = line_start
-        while j < search_end:
-            paren_pos = clean.find("(", j, search_end)
-            if paren_pos == -1:
-                break
-            name_match = None
-            for match in IDENT_RE.finditer(clean[line_start:paren_pos]):
-                name_match = match
-            if name_match is not None and name_match.end() + line_start == paren_pos:
-                close_paren = matching_paren_close(clean, paren_pos)
-                if close_paren is not None:
-                    k = close_paren + 1
-                    while k < n and clean[k].isspace():
-                        k += 1
-                    if k < n and clean[k] == "{":
-                        name = name_match.group(0)
-                        definitions.append((name, line_start, k))
-                        break
-            j = paren_pos + 1
-    return definitions
-
-def find_functions(text):
-    clean = strip_comments_and_strings(text)
-    defs = find_definitions_at_column_zero(clean)
-    all_top_braces = find_top_level_open_braces(clean)
-    brace_to_def = {fbrace: (fname, fstart) for fname, fstart, fbrace in defs}
-    functions = []
-    for brace_pos in all_top_braces:
-        entry = brace_to_def.get(brace_pos)
-        close_pos = matching_close(clean, brace_pos)
-        if close_pos is None:
-            break
-        if entry is not None:
-            name, decl_start = entry
-            functions.append((decl_start, close_pos, name))
+            if depth == 0 and stack:
+                entry = stack.pop()
+                if entry is not None:
+                    name, decl_start = entry
+                    functions.append((decl_start, i, name))
+            elif stack:
+                stack.pop()
     return functions
