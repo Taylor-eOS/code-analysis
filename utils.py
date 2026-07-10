@@ -91,28 +91,28 @@ def matching_paren_open(clean, close_paren_pos, lower_bound):
         i -= 1
     return None
 
+def is_column_zero_brace(clean, pos):
+    k = pos - 1
+    while k >= 0 and clean[k] in " \t":
+        k -= 1
+    return k < 0 or clean[k] == "\n"
+
 def find_functions(text):
     clean = strip_comments_and_strings(text)
     n = len(clean)
-    depth = 0
-    stack = []
     functions = []
-    for i in range(n):
+    i = 0
+    while i < n:
         c = clean[i]
-        if c == "{":
-            if depth == 0:
-                entry = match_definition_before_brace(clean, i)
-                stack.append(entry)
-            else:
-                stack.append(None)
-            depth += 1
-        elif c == "}":
-            depth -= 1
-            if depth == 0 and stack:
-                entry = stack.pop()
-                if entry is not None:
-                    name, decl_start = entry
-                    functions.append((decl_start, i, name))
-            elif stack:
-                stack.pop()
+        if c == "{" and is_column_zero_brace(clean, i):
+            entry = match_definition_before_brace(clean, i)
+            close = matching_close(clean, i)
+            if close is None:
+                break
+            if entry is not None:
+                name, decl_start = entry
+                functions.append((decl_start, close, name))
+            i = close + 1
+        else:
+            i += 1
     return functions
