@@ -1,30 +1,43 @@
-from utils import find_function_boundaries
+from utils import find_functions
 
 SOURCE_FILE = "Rome.c"
 TRUNCATED_FILE = "Rome_truncated.c"
 BUCKETS = 100
 RENAMED_MIN_LEN = 12
-STATE = {"lines": None, "buckets": [False] * BUCKETS, "renamed_lines": []}
+STATE = {"text": None, "lines": None, "line_offsets": None, "buckets": [False] * BUCKETS, "renamed_lines": []}
 
 def load_source():
-    print("Loading source")
     with open(SOURCE_FILE, "r") as f:
-        STATE["lines"] = f.readlines()
+        STATE["text"] = f.read()
+    STATE["lines"] = STATE["text"].splitlines(keepends=True)
+    offsets = []
+    pos = 0
+    for line in STATE["lines"]:
+        offsets.append(pos)
+        pos += len(line)
+    STATE["line_offsets"] = offsets
+
+def offset_to_line(offset):
+    offsets = STATE["line_offsets"]
+    lo = 0
+    hi = len(offsets) - 1
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if offsets[mid] <= offset:
+            lo = mid
+        else:
+            hi = mid - 1
+    return lo
 
 def analyze_functions():
-    print("Analyzing functions")
     total_lines = len(STATE["lines"])
     if total_lines == 0:
         return
-    boundaries = find_function_boundaries(STATE["lines"])
+    functions = find_functions(STATE["text"])
     renamed_lines = []
-    for i in boundaries:
-        line = STATE["lines"][i]
-        idx = line.find("FUN_")
-        name_end = line.find("(", idx)
-        name = line[idx:name_end].strip()
+    for start, end, name in functions:
         if len(name) > RENAMED_MIN_LEN:
-            renamed_lines.append(i)
+            renamed_lines.append(offset_to_line(start))
     STATE["renamed_lines"] = renamed_lines
     for i in renamed_lines:
         bucket_idx = min(int((i / total_lines) * BUCKETS), BUCKETS - 1)
@@ -82,11 +95,13 @@ def truncate():
                 f.writelines(STATE["lines"][start_line:end_line])
     print(f"Truncated codebase written to {TRUNCATED_FILE}")
 
-def main():
-    load_source()
-    analyze_functions()
-    draw_visualization()
-    truncate()
-
 if __name__ == "__main__":
-    main()
+    print("Loading source")
+    load_source()
+    print("Analyzing functions")
+    analyze_functions()
+    print("Drawing visualization")
+    draw_visualization()
+    print("Truncating")
+    truncate()
+    print("Done")

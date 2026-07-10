@@ -34,12 +34,6 @@ def draw_dot(x, y, label, color, tag):
     canvas.create_text(x, y + DOT_RADIUS + 8, text=label, font=("TkDefaultFont", 7), tags=(tag,))
 
 def build_chain(name, direction, max_depth):
-    """Walk the call graph outward from `name` in one direction ('callers' or 'callees'),
-    up to max_depth hops. Returns a list of columns; each column is a dict:
-    {"names": [...capped names...], "truncated": int, "parent_of": {name: [parent names in prev column]}}
-    Duplicate names within a column are merged (kept once). Already-visited names
-    (anywhere in the chain so far) are not expanded further, to avoid cycles/recursion blowups.
-    """
     get_next = explore_functions.get_callers if direction == "callers" else explore_functions.get_callees
     columns = []
     visited = {name}
@@ -79,13 +73,10 @@ def render_center(name):
     VIEW["current_name"] = name
     draw_dot(CENTER_X, CENTER_Y, name, CENTER_COLOR, "center")
     VIEW["dot_names"]["center"] = name
-
     caller_columns = build_chain(name, "callers", MAX_DEPTH)
     callee_columns = build_chain(name, "callees", MAX_DEPTH)
-
     _render_side(caller_columns, direction="callers")
     _render_side(callee_columns, direction="callees")
-
     entry = explore_functions.STATE["function_map"].get(name)
     n_callers = len(caller_columns[0]["names"]) if caller_columns else 0
     n_callees = len(callee_columns[0]["names"]) if callee_columns else 0
@@ -97,18 +88,10 @@ def render_center(name):
         VIEW["status_var"].set(f"{name}  |  not found in index")
 
 def _render_side(columns, direction):
-    """Draw one side (callers = left, callees = right) of the chain.
-    columns[0] is one hop away from center, columns[1] is two hops away, etc.
-    Each node's position is tracked so lines can connect it to its parent(s)
-    in the previous column (or to center, for column 0).
-    """
     canvas = VIEW["canvas"]
     color = CALLER_COLOR if direction == "callers" else CALLEE_COLOR
     sign = -1 if direction == "callers" else 1
-
-    # positions[col_index][name] = (x, y), where col_index -1 means the center node
     positions = {-1: {None: (CENTER_X, CENTER_Y)}}
-
     for col_index, col in enumerate(columns):
         x = CENTER_X + sign * COLUMN_GAP * (col_index + 1)
         names = col["names"]
@@ -116,7 +99,6 @@ def _render_side(columns, direction):
         slots = len(names) + (1 if truncated else 0)
         coords = layout_positions(slots, x, CANVAS_HEIGHT)
         positions[col_index] = {}
-
         prev_positions = positions[col_index - 1]
         for i, node_name in enumerate(names):
             nx, ny = coords[i]
@@ -133,13 +115,11 @@ def _render_side(columns, direction):
             tag = f"{direction}{col_index}_{i}"
             draw_dot(nx, ny, node_name, color, tag)
             VIEW["dot_names"][tag] = node_name
-
         if truncated:
             mx, my = coords[-1]
             tag = f"{direction}{col_index}_more"
             label = f"+{truncated} more..."
             canvas.create_text(mx, my, text=label, font=("TkDefaultFont", 7), fill=MORE_COLOR, tags=(tag,))
-            # not clickable / not added to dot_names since it isn't a real function name
 
 def copy_name_to_clipboard(name):
     VIEW["root"].clipboard_clear()
@@ -176,7 +156,7 @@ def summarize_current_file():
         return
     VIEW["status_var"].set(f"Asking LLM to summarize {entry['path']}...")
     VIEW["root"].update_idletasks()
-    prompt = f"{code}\n\nInstruction: Describe the functions specific role in the games internal logic by identifying what unique operation it performs compared to other functions. Focus on the concrete behavior visible in the code. Summarize this as one plain sentence that states the functions distinct purpose rather than a generic category. All functions are from the Rome Total War source code, that does not have to be mentioned. Do not invent specifics that you can't know. Write your response as one single unformatted sentence."
+    prompt = f"{code}\n\nInstruction: This is a function from a video game executable decompile. Describe the functions role in the games internal logic by identifying what unique operation it likely performs compared to other functions. Focus on the concrete behavior visible in the code. Summarize this as one plain sentence that states the functions distinct purpose. All functions are from the Rome Total War source code, that does not have to be mentioned. Do not invent specific functionality that you can't infer from the code. Don't overinterpret called identifier names as they could be incorrect user guesses. Write your response as one single unformatted sentence."
     try:
         summary = ask_llm(prompt, 3)
     except Exception as exc:

@@ -1,6 +1,6 @@
 SOURCE_FILE = "Rome.c"
 LINE_LIST_FILE = "line_list.txt"
-OUTPUT_FILE = "extracted_functions.c"
+OUTPUT_FILE = "extracted_functions.txt"
 STATE = {"lines": None, "spans": None, "target_lines": None}
 
 def load_source():

@@ -1,6 +1,6 @@
 SOURCE_FILE = "Rome.c"
 LIST_FILE = "list.txt"
-OUTPUT_FILE = "extracted_functions.c"
+OUTPUT_FILE = "extracted_functions.txt"
 
 STATE = {"names": None, "lines": None, "starts": None}
 

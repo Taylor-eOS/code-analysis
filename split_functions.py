@@ -1,51 +1,38 @@
 import os
-from utils import find_function_boundaries, extract_function_name
+from utils import find_functions
 
-SOURCE_FILE = input("Input file: ")
+SOURCE_FILE = input("Input file (default): ") or "Rome.c"
 OUTPUT_DIR = os.path.splitext(SOURCE_FILE)[0].lower() + "_functions"
-STATE = {"lines": None, "starts": [], "ends": [], "reported_dirs": set()}
+text = None
+functions = []
+reported_dirs = set()
 
 def load_source():
-    print("Loading source")
+    global text
     with open(SOURCE_FILE, "r") as f:
-        STATE["lines"] = f.readlines()
+        text = f.read()
 
-def find_ends():
-    lines = STATE["lines"]
-    ends = []
-    for start in STATE["starts"]:
-        end = start
-        for i in range(start, len(lines)):
-            if lines[i].rstrip() == "}":
-                end = i
-                break
-        ends.append(end)
-    STATE["ends"] = ends
+def group_suffix(name):
+    if name.startswith("FUN_") and len(name) >= 7:
+        return name[4:7]
+    return name[:3] if len(name) >= 3 else name
 
 def write_functions():
-    lines = STATE["lines"]
-    starts = STATE["starts"]
-    ends = STATE["ends"]
-    for start, end in zip(starts, ends):
-        name, _ = extract_function_name(lines, start)
-        if name is None:
-            continue
-        suffix = name[4:7] if len(name) >= 6 else name[4:]
+    for start, end, name in functions:
+        suffix = group_suffix(name)
         sub_dir = os.path.join(OUTPUT_DIR, suffix)
-        if sub_dir not in STATE["reported_dirs"]:
+        if sub_dir not in reported_dirs:
             print(f"Writing {sub_dir}")
-            STATE["reported_dirs"].add(sub_dir)
+            reported_dirs.add(sub_dir)
         os.makedirs(sub_dir, exist_ok=True)
         out_path = os.path.join(sub_dir, name + ".c")
         with open(out_path, "w") as f:
-            f.writelines(lines[start:end + 1])
-
-def main():
-    load_source()
-    STATE["starts"] = find_function_boundaries(STATE["lines"])
-    find_ends()
-    write_functions()
-    print(f"Wrote {len(STATE['starts'])} functions")
+            f.write(text[start:end + 1])
 
 if __name__ == "__main__":
-    main()
+    print("Loading source")
+    load_source()
+    print("Writing functions")
+    functions = find_functions(text)
+    write_functions()
+    print(f"Wrote {len(functions)} functions")
