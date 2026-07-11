@@ -11,8 +11,18 @@ def load_source():
         STATE["text"] = f.read()
 
 def load_target_lines():
+    lines = set()
     with open(LINE_LIST_FILE, "r") as f:
-        STATE["target_lines"] = set(int(l.strip()) for l in f if l.strip())
+        for l in f:
+            digits = ""
+            for char in l.lstrip():
+                if char.isdigit():
+                    digits += char
+                else:
+                    break
+            if digits:
+                lines.add(int(digits))
+    STATE["target_lines"] = lines
 
 def index_line_starts():
     text = STATE["text"]
