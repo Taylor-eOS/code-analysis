@@ -2,15 +2,17 @@ from bisect import bisect_right
 from utils import find_functions
 
 SOURCE_FILE = "Rome.c"
-LINE_LIST_FILE = "line_list.txt"
+LINE_LIST_FILE = "list.txt"
 OUTPUT_FILE = "extracted_functions.txt"
 STATE = {"text": None, "line_starts": None, "spans": None, "target_lines": None}
 
 def load_source():
+    print("Loading source")
     with open(SOURCE_FILE, "r") as f:
         STATE["text"] = f.read()
 
 def load_target_lines():
+    print("Loading target lines")
     lines = set()
     with open(LINE_LIST_FILE, "r") as f:
         for l in f:
@@ -47,6 +49,7 @@ def find_containing_span(line_no):
     return None
 
 def write_output():
+    print("Writing output")
     text = STATE["text"]
     written_spans = set()
     missing = []

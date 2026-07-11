@@ -7,10 +7,12 @@ OUTPUT_FILE = "extracted_functions.txt"
 STATE = {"names": None, "text": None, "spans": None}
 
 def load_names():
+    print("Loading names")
     with open(LIST_FILE, "r") as f:
         STATE["names"] = set(line.strip() for line in f if line.strip())
 
 def load_source():
+    print("Loading source")
     with open(SOURCE_FILE, "r") as f:
         STATE["text"] = f.read()
 
@@ -22,6 +24,7 @@ def index_spans():
     STATE["spans"] = spans
 
 def write_output():
+    print("Writing output")
     spans = STATE["spans"]
     text = STATE["text"]
     missing = STATE["names"] - set(spans.keys())
