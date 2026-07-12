@@ -202,8 +202,8 @@ def list_files(folder):
     folder_path = os.path.join(ROOT_DIR, folder)
     return sorted(f for f in os.listdir(folder_path) if f.endswith(".c"))
 
-def load_file(filename):
-    path = os.path.join(ROOT_DIR, filename[4:7], filename)
+def load_file(folder, filename):
+    path = os.path.join(ROOT_DIR, folder, filename)
     with open(path, "r") as f:
         STATE["current_lines"] = f.readlines()
     STATE["current_file"] = path
@@ -234,7 +234,7 @@ def index_all_functions():
     list_folders()
     for folder in STATE["folders"]:
         for filename in list_files(folder):
-            load_file(filename)
+            load_file(folder, filename)
             detect_functions()
     build_caller_map()
 
