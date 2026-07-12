@@ -1,21 +1,20 @@
 import os
 import sys
 
-STATE = {
-    "list_path": "list.txt",
-    "base_dir": "rome_functions_cut"
-}
+LIST_PATH = "list.txt"
+DEFAULT = "rome_functions_cut"
+BASE_DIR = input(f"Directory ({DEFAULT}): ") or DEFAULT
 
 def remove_listed_files():
-    print(f"Checking list file at: {os.path.abspath(STATE['list_path'])}")
-    if not os.path.exists(STATE["list_path"]):
+    print(f"Checking list file at: {os.path.abspath(LIST_PATH)}")
+    if not os.path.exists(LIST_PATH):
         print("Error: List file does not exist.")
         return
-    print(f"Checking target directory at: {os.path.abspath(STATE['base_dir'])}")
-    if not os.path.exists(STATE["base_dir"]):
+    print(f"Checking target directory at: {os.path.abspath(BASE_DIR)}")
+    if not os.path.exists(BASE_DIR):
         print("Error: Target directory does not exist.")
         return
-    with open(STATE["list_path"], "r") as f:
+    with open(LIST_PATH, "r") as f:
         lines = f.readlines()
     print(f"Found {len(lines)} lines in the list file.")
     for line in lines:
@@ -23,13 +22,12 @@ def remove_listed_files():
         if not cleaned_line:
             print("Skipping empty line.")
             continue
-        target_path = os.path.join(STATE["base_dir"], cleaned_line)
-        print(f"Attempting to delete: {target_path}")
+        target_path = os.path.join(BASE_DIR, cleaned_line)
+        print(f"Deleting: {target_path}")
         if os.path.exists(target_path):
             os.remove(target_path)
-            print("Status: Success.")
         else:
-            print("Status: File not found.")
+            print(f"File not found")
 
 if __name__ == "__main__":
     remove_listed_files()
