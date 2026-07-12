@@ -13,13 +13,16 @@ CALLER_COLOR = "#4a9a4a"
 CALLEE_COLOR = "#4a9a4a"
 MORE_COLOR = "#bbbbbb"
 LINE_COLOR = "#999999"
+SELECT_COLOR = "#cc2222"
+SELECT_RADIUS = DOT_RADIUS + 5
 MAX_SUGGESTIONS = 22
 MAX_DEPTH = 5
 MAX_PER_COLUMN = 12
 COLUMN_GAP = (CANVAS_WIDTH // 2 - 40) // MAX_DEPTH
 
 VIEW = {"root": None, "name_entry": None, "suggest_list": None, "canvas": None,
-        "status_var": None, "current_name": None, "dot_names": {}, "sorted_names": []}
+        "status_var": None, "current_name": None, "dot_names": {}, "sorted_names": [],
+        "dot_coords": {}, "selected_tag": None}
 
 def layout_positions(count, x, height):
     if count == 0:
@@ -32,6 +35,21 @@ def draw_dot(x, y, label, color, tag):
     canvas.create_oval(x - DOT_RADIUS, y - DOT_RADIUS, x + DOT_RADIUS, y + DOT_RADIUS,
                         fill=color, outline="black", tags=(tag,))
     canvas.create_text(x, y + DOT_RADIUS + 8, text=label, font=("TkDefaultFont", 7), tags=(tag,))
+    VIEW["dot_coords"][tag] = (x, y)
+
+def draw_selection_ring(tag):
+    canvas = VIEW["canvas"]
+    old_tag = VIEW["selected_tag"]
+    if old_tag is not None:
+        canvas.delete("select_ring")
+    if tag not in VIEW["dot_coords"]:
+        VIEW["selected_tag"] = None
+        return
+    x, y = VIEW["dot_coords"][tag]
+    canvas.create_oval(x - SELECT_RADIUS, y - SELECT_RADIUS, x + SELECT_RADIUS, y + SELECT_RADIUS,
+                        outline=SELECT_COLOR, width=2, tags=("select_ring",))
+    canvas.tag_raise("select_ring")
+    VIEW["selected_tag"] = tag
 
 def build_chain(name, direction, max_depth):
     get_next = explore_functions.get_callers if direction == "callers" else explore_functions.get_callees
@@ -70,6 +88,8 @@ def build_chain(name, direction, max_depth):
 def render_center(name):
     VIEW["canvas"].delete("all")
     VIEW["dot_names"] = {}
+    VIEW["dot_coords"] = {}
+    VIEW["selected_tag"] = None
     VIEW["current_name"] = name
     draw_dot(CENTER_X, CENTER_Y, name, CENTER_COLOR, "center")
     VIEW["dot_names"]["center"] = name
@@ -77,6 +97,7 @@ def render_center(name):
     callee_columns = build_chain(name, "callees", MAX_DEPTH)
     _render_side(caller_columns, direction="callers")
     _render_side(callee_columns, direction="callees")
+    draw_selection_ring("center")
     entry = explore_functions.STATE["function_map"].get(name)
     n_callers = len(caller_columns[0]["names"]) if caller_columns else 0
     n_callees = len(callee_columns[0]["names"]) if callee_columns else 0
@@ -156,7 +177,7 @@ def summarize_current_file():
         return
     VIEW["status_var"].set(f"Asking LLM to summarize {entry['path']}...")
     VIEW["root"].update_idletasks()
-    prompt = f"{code}\n\nInstruction: This is a function from a video game executable decompile. Describe the functions role in the games internal logic by identifying what unique operation it likely performs compared to other functions. Focus on the concrete behavior visible in the code. Summarize this as one plain sentence that states the functions distinct purpose. All functions are from the Rome Total War source code, that does not have to be mentioned. Do not invent specific functionality that you can't infer from the code. Don't overinterpret called identifier names as they could be incorrect user guesses. Write your response as one single unformatted sentence."
+    prompt = f"{code}\n\nInstruction: This is a decompiled function from a video game executable. Describe the functions role in the games internal logic by identifying what unique operation it likely performs compared to other functions. Focus on the concrete behavior visible in the code. Summarize this as one plain sentence that states the functions distinct purpose. All functions are from the Rome Total War source code, that does not have to be mentioned. Do not invent specific functionality that you can't infer from the code. Don't overinterpret called identifier names as they could be incorrect former guesses. Write your response as one single unformatted sentence."
     try:
         summary = ask_llm(prompt, 3)
     except Exception as exc:
