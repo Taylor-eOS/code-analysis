@@ -124,3 +124,8 @@ def find_functions(text):
         else:
             i += 1
     return functions
+
+def group_suffix(name):
+    if name.startswith("FUN_") and len(name) >= 7:
+        return name[4:7]
+    return name[:3] if len(name) >= 3 else name

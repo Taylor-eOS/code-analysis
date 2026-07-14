@@ -1,5 +1,5 @@
 import os
-from utils import find_functions
+from utils import find_functions, group_suffix
 
 SOURCE_FILE = input("Input file (default): ") or "Rome.c"
 OUTPUT_DIR = os.path.splitext(SOURCE_FILE)[0].lower() + "_functions"
@@ -9,11 +9,6 @@ def load_source():
     print("Loading source")
     with open(SOURCE_FILE, "r") as f:
         STATE["text"] = f.read()
-
-def group_suffix(name):
-    if name.startswith("FUN_") and len(name) >= 7:
-        return name[4:7]
-    return name[:3] if len(name) >= 3 else name
 
 def write_functions():
     print("Writing functions")

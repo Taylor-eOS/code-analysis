@@ -1,11 +1,11 @@
 import os
 import shutil
-from split_functions import group_suffix
+from utils import group_suffix
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FUNCTIONS_DIR = os.path.join(SCRIPT_DIR, "rome_functions")
 LIST_FILE = os.path.join(SCRIPT_DIR, "list.txt")
-OUTPUT_DIR = os.path.join(SCRIPT_DIR, "extracted_functions")
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "listed_functions")
 
 def main():
     with open(LIST_FILE, "r") as f:
